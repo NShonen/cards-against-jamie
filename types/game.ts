@@ -11,7 +11,7 @@ export interface Player {
   name: string;
   isCardCzar: boolean;
   score: number;
-  cards: Card[];
+  hand: Card[];
 }
 
 export interface GameRoom {

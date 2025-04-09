@@ -36,7 +36,7 @@ export class GameCardManager {
       }
       this.players.set(player.id, {
         ...player,
-        cards: this.deckService.drawWhiteCards(7),
+        hand: this.deckService.drawWhiteCards(7),
       });
     }
   }
@@ -82,7 +82,7 @@ export class GameCardManager {
     // Validate and collect cards to submit
     const submittedCards: Card[] = [];
     const newCards: Card[] = [];
-    const remainingCards: Card[] = [...player.cards];
+    const remainingCards: Card[] = [...player.hand];
 
     for (const index of cardIndices.sort((a, b) => b - a)) {
       if (index < 0 || index >= remainingCards.length) {
@@ -104,7 +104,7 @@ export class GameCardManager {
     // Update player's cards and store submission
     this.players.set(playerId, {
       ...player,
-      cards: [...remainingCards, ...newCards],
+      hand: [...remainingCards, ...newCards],
     });
     this.submittedCards.set(playerId, submittedCards);
 
@@ -132,7 +132,7 @@ export class GameCardManager {
     }
 
     // Discard player's cards
-    this.deckService.discardWhiteCards(player.cards);
+    this.deckService.discardWhiteCards(player.hand);
 
     // Remove player data
     this.players.delete(playerId);
@@ -162,7 +162,7 @@ export class GameCardManager {
     if (!player) {
       throw new PlayerError(ErrorMessages.PLAYER_NOT_FOUND);
     }
-    return [...player.cards];
+    return [...player.hand];
   }
 
   /**
