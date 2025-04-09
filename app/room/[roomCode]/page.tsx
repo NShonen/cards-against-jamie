@@ -4,7 +4,12 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { GameLayout } from "@/components/layout/GameLayout";
 import CardSelection from "@/components/game/CardSelection";
-import { Card, GameRoom as GameRoomType, GameStatus } from "@/types/game";
+import {
+  Card,
+  GameRoom as GameRoomType,
+  GameStatus,
+  Player,
+} from "@/types/game";
 import { selectRooms, updateRoom, addRoom } from "@/state/gameReducer";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
@@ -23,9 +28,10 @@ export default function RoomPage() {
   const { roomCode } = useParams();
   const [room, setRoom] = useState<RoomData | null>(null);
   const [error, setError] = useState("");
+  const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const dispatch = useAppDispatch();
-  const gameRooms = useAppSelector(selectRooms);
-  const currentGameRoom = gameRooms.find((r) => r.id === roomCode);
+  const rooms = useAppSelector(selectRooms);
+  const currentGameRoom = rooms.find((r) => r.id === roomCode);
 
   useEffect(() => {
     const fetchRoom = async () => {
@@ -64,24 +70,34 @@ export default function RoomPage() {
     fetchRoom();
   }, [roomCode, dispatch, currentGameRoom]);
 
-  const handleCardSelect = (card: Card) => {
-    if (!currentGameRoom) return;
+  useEffect(() => {
+    // Initialize current player - in a real app, this would come from auth
+    if (currentGameRoom) {
+      const player = currentGameRoom.players[0]; // For demo, use first player
+      setCurrentPlayer(player);
+    }
+  }, [currentGameRoom]);
+
+  const handleCardSelect = (selectedCards: Card[]) => {
+    if (!currentGameRoom || !currentPlayer) return;
 
     // Only allow card selection during playing phase
     if (currentGameRoom.status !== "playing") return;
 
     // Check if user is card czar
-    const currentPlayer = currentGameRoom.players.find((p) => p.isCardCzar);
-    if (currentPlayer?.isCardCzar) return; // Card czar can't submit cards
+    const player = currentGameRoom.players.find(
+      (p) => p.id === currentPlayer.id
+    );
+    if (player?.isCardCzar) return; // Card czar can't submit cards
 
-    // Add selected card to submitted cards
+    // Add selected cards to submitted cards
     const updatedRoom = {
       ...currentGameRoom,
       submittedCards: [
         ...currentGameRoom.submittedCards,
         {
-          playerId: currentPlayer?.id || "",
-          cards: [card],
+          playerId: player?.id || "",
+          cards: selectedCards,
         },
       ],
     };
@@ -142,6 +158,8 @@ export default function RoomPage() {
                   disabled={
                     player.isCardCzar || currentGameRoom.status !== "playing"
                   }
+                  maxSelections={currentGameRoom.blackCard?.pick || 1}
+                  blackCard={currentGameRoom.blackCard}
                 />
               </div>
             ))}
