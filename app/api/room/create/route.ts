@@ -47,6 +47,7 @@ export async function POST(request: Request) {
         hand: sampleWhiteCards.slice(0, 3),
         isCardCzar: true,
         score: 0,
+        isHost: true,
       },
       {
         id: "p2",
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
         hand: sampleWhiteCards.slice(3, 6),
         isCardCzar: false,
         score: 0,
+        isHost: false,
       },
     ];
 

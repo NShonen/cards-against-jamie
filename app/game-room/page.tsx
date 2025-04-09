@@ -3,6 +3,8 @@
 import RoomCreation from "@/components/room/RoomCreation";
 import RoomJoin from "@/components/room/RoomJoin";
 import { RoundManager } from "@/components/game/RoundManager";
+import { Scoreboard } from "@/components/game/Scoreboard";
+import { GameResultsModal } from "@/components/game/GameResultsModal";
 import { GameProvider } from "@/app/context/GameContext";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -15,8 +17,10 @@ export default function GameRoomPage() {
           <RoomCreation />
           <RoomJoin />
           <RoundManager />
+          <Scoreboard />
         </div>
       </div>
+      <GameResultsModal />
       <Toaster />
     </GameProvider>
   );

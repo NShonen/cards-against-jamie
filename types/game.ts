@@ -1,29 +1,68 @@
+export type GamePhase =
+  | "waiting"
+  | "playing"
+  | "judging"
+  | "scoring"
+  | "roundEnd"
+  | "gameEnd";
+
 export interface Card {
   id: string;
-  type: "black" | "white";
   text: string;
+  type: "black" | "white";
   pick?: number; // For black cards
   category?: string; // Card category for filtering and organization
+  metadata?: Record<string, any>;
 }
 
 export interface Player {
   id: string;
   name: string;
-  isCardCzar: boolean;
   score: number;
+  isHost: boolean;
+  isCardCzar: boolean;
   hand: Card[];
 }
 
-export interface GameRoom {
-  id: string;
-  password: string;
+export interface Round {
+  id: number;
+  blackCard: Card;
+  cardCzarId: string;
+  submissions: {
+    playerId: string;
+    cards: Card[];
+  }[];
+  winningSubmission?: {
+    playerId: string;
+    cards: Card[];
+  };
+  timeRemaining: number;
+}
+
+export interface GameState {
+  roomId: string;
+  phase: GamePhase;
   players: Player[];
-  status: GameStatus;
-  currentRound: number;
-  cardCzar: Player | null;
-  blackCard: Card | null;
-  submittedCards: SubmittedCard[];
-  scores: PlayerScore[];
+  currentRound: Round | null;
+  roundNumber: number;
+  blackDeck: Card[];
+  whiteDeck: Card[];
+  maxPlayers: number;
+  minPlayers: number;
+  roundTimeLimit: number; // in seconds
+}
+
+export interface GameAction {
+  type:
+    | "START_GAME"
+    | "END_GAME"
+    | "START_ROUND"
+    | "END_ROUND"
+    | "SUBMIT_CARDS"
+    | "SELECT_WINNER"
+    | "UPDATE_TIMER"
+    | "SET_CARD_CZAR";
+  payload: any;
 }
 
 export interface SubmittedCard {
@@ -36,9 +75,5 @@ export interface PlayerScore {
   score: number;
 }
 
-export type GameStatus =
-  | "waiting"
-  | "playing"
-  | "judging"
-  | "roundEnd"
-  | "gameEnd";
+// Legacy type alias for backward compatibility
+export type GameStatus = GamePhase;

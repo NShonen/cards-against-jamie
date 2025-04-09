@@ -6,7 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { useGame } from "@/app/context/GameContext";
-import { CardCzarInterface } from "@/app/components/game/CardCzarInterface";
+import { CardCzarInterface } from "@/components/game/CardCzarInterface";
 
 export function RoundManager() {
   const { state, dispatch } = useGame();
