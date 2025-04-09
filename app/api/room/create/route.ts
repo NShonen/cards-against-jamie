@@ -44,14 +44,14 @@ export async function POST(request: Request) {
       {
         id: "p1",
         name: "Player 1",
-        hand: sampleWhiteCards.slice(0, 3),
+        cards: sampleWhiteCards.slice(0, 3),
         isCardCzar: true,
         score: 0,
       },
       {
         id: "p2",
         name: "Player 2",
-        hand: sampleWhiteCards.slice(3, 6),
+        cards: sampleWhiteCards.slice(3, 6),
         isCardCzar: false,
         score: 2,
       },

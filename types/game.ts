@@ -9,6 +9,7 @@ export interface Card {
 export interface Player {
   id: string;
   name: string;
+  isCardCzar: boolean;
   score: number;
   cards: Card[];
 }
