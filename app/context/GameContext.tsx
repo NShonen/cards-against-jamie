@@ -8,7 +8,7 @@ import {
   Player,
   Card,
   Round,
-} from "../types/game";
+} from "../../types/game";
 
 const initialState: GameState = {
   roomId: "",
@@ -21,6 +21,11 @@ const initialState: GameState = {
   maxPlayers: 20,
   minPlayers: 3,
   roundTimeLimit: 120, // 2 minutes per round
+  winCondition: {
+    type: "score",
+    target: 5, // Default: first to 5 points wins
+  },
+  winner: null,
 };
 
 function gameReducer(state: GameState, action: GameAction): GameState {
@@ -48,10 +53,25 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
 
     case "END_ROUND":
+      const newRoundNumber = state.roundNumber + 1;
+      let roundWinner: Player | null = null;
+
+      // Check for winner in rounds-based games
+      if (
+        state.winCondition.type === "rounds" &&
+        newRoundNumber >= state.winCondition.target
+      ) {
+        // Find player with highest score
+        roundWinner = state.players.reduce((highest: Player, current: Player) =>
+          (current.score || 0) > (highest.score || 0) ? current : highest
+        );
+      }
+
       return {
         ...state,
-        phase: "scoring",
-        roundNumber: state.roundNumber + 1,
+        phase: roundWinner ? "gameEnd" : "scoring",
+        roundNumber: newRoundNumber,
+        winner: roundWinner,
         currentRound: {
           ...state.currentRound!,
           winningSubmission: action.payload.winningSubmission,
@@ -77,18 +97,31 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "SELECT_WINNER":
       if (!state.currentRound) return state;
+
+      // Create new players array with updated score
+      const updatedPlayers = state.players.map((player: Player) =>
+        player.id === action.payload.winningSubmission.playerId
+          ? { ...player, score: (player.score || 0) + 1 }
+          : player
+      );
+
+      // Check for game winner
+      const winner = updatedPlayers.find((player: Player) => {
+        if (state.winCondition.type === "score") {
+          return (player.score || 0) >= state.winCondition.target;
+        }
+        return false; // For rounds-based games, we check at round end
+      });
+
       return {
         ...state,
-        phase: "scoring",
+        phase: winner ? "gameEnd" : "scoring",
         currentRound: {
           ...state.currentRound,
           winningSubmission: action.payload.winningSubmission,
         },
-        players: state.players.map((player) =>
-          player.id === action.payload.winningSubmission.playerId
-            ? { ...player, score: player.score + 1 }
-            : player
-        ),
+        players: updatedPlayers,
+        winner: winner || null,
       };
 
     case "UPDATE_TIMER":
@@ -104,10 +137,23 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case "SET_CARD_CZAR":
       return {
         ...state,
-        players: state.players.map((player) => ({
+        players: state.players.map((player: Player) => ({
           ...player,
           isCardCzar: player.id === action.payload.playerId,
         })),
+      };
+
+    case "SET_WIN_CONDITION":
+      return {
+        ...state,
+        winCondition: action.payload.winCondition,
+      };
+
+    case "SET_WINNER":
+      return {
+        ...state,
+        winner: action.payload.winner,
+        phase: "gameEnd",
       };
 
     default:

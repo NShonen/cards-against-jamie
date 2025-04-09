@@ -50,6 +50,11 @@ export interface GameState {
   maxPlayers: number;
   minPlayers: number;
   roundTimeLimit: number; // in seconds
+  winCondition: {
+    type: "score" | "rounds";
+    target: number;
+  };
+  winner: Player | null;
 }
 
 export interface GameAction {
@@ -61,7 +66,9 @@ export interface GameAction {
     | "SUBMIT_CARDS"
     | "SELECT_WINNER"
     | "UPDATE_TIMER"
-    | "SET_CARD_CZAR";
+    | "SET_CARD_CZAR"
+    | "SET_WIN_CONDITION"
+    | "SET_WINNER";
   payload: any;
 }
 
@@ -76,4 +83,4 @@ export interface PlayerScore {
 }
 
 // Legacy type alias for backward compatibility
-export type GameStatus = GamePhase;
+export type GameStatus = "waiting" | "playing" | "completed";

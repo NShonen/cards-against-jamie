@@ -28,7 +28,7 @@ const generateRoomCode = () => nanoid(6).toUpperCase();
 
 export async function POST(request: Request) {
   try {
-    const { roomName, password } = await request.json();
+    const { roomName, password, winCondition } = await request.json();
 
     if (!roomName) {
       return NextResponse.json(
@@ -59,6 +59,18 @@ export async function POST(request: Request) {
       },
     ];
 
+    // Validate win condition
+    const validatedWinCondition =
+      winCondition &&
+      (winCondition.type === "score" || winCondition.type === "rounds") &&
+      typeof winCondition.target === "number" &&
+      winCondition.target > 0
+        ? winCondition
+        : {
+            type: "score" as const,
+            target: 5, // Default: first to 5 points wins
+          };
+
     // Create new room with dummy data
     roomStore.setRoom(roomCode, {
       roomName,
@@ -74,14 +86,19 @@ export async function POST(request: Request) {
           cards: [sampleWhiteCards[3]],
         },
       ],
-      scores: [
-        { playerId: "p1", score: 0 },
-        { playerId: "p2", score: 2 },
-      ],
+      scores: samplePlayers.map((player) => ({
+        playerId: player.id,
+        score: 0,
+      })),
+      winCondition: validatedWinCondition,
+      winner: null,
     });
 
     // Return room code without exposing password
-    return NextResponse.json({ roomCode });
+    return NextResponse.json({
+      roomCode,
+      winCondition: validatedWinCondition, // Return the actual win condition being used
+    });
   } catch (error) {
     console.error("Error creating room:", error);
     return NextResponse.json(
