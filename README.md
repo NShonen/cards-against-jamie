@@ -1,5 +1,8 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+https://www.cardsagainstformality.io/
+https://github.com/heynatefox/cards-against-formality
+
 ## Getting Started
 
 First, run the development server:
