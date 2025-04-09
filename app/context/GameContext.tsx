@@ -60,8 +60,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "SUBMIT_CARDS":
       if (!state.currentRound) return state;
+      const allPlayersSubmitted =
+        state.currentRound.submissions.length === state.players.length - 1; // -1 for Card Czar
+
       return {
         ...state,
+        phase: allPlayersSubmitted ? "judging" : state.phase,
         currentRound: {
           ...state.currentRound,
           submissions: [
@@ -75,6 +79,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       if (!state.currentRound) return state;
       return {
         ...state,
+        phase: "scoring",
         currentRound: {
           ...state.currentRound,
           winningSubmission: action.payload.winningSubmission,
@@ -94,6 +99,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ...state.currentRound,
           timeRemaining: action.payload.timeRemaining,
         },
+      };
+
+    case "SET_CARD_CZAR":
+      return {
+        ...state,
+        players: state.players.map((player) => ({
+          ...player,
+          isCardCzar: player.id === action.payload.playerId,
+        })),
       };
 
     default:

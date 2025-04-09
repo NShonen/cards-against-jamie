@@ -52,6 +52,7 @@ export interface GameAction {
     | "END_ROUND"
     | "SUBMIT_CARDS"
     | "SELECT_WINNER"
-    | "UPDATE_TIMER";
+    | "UPDATE_TIMER"
+    | "SET_CARD_CZAR";
   payload: any;
 }

@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { useGame } from "@/app/context/GameContext";
+import { CardCzarInterface } from "@/app/components/game/CardCzarInterface";
 
 export function RoundManager() {
   const { state, dispatch } = useGame();
@@ -16,6 +17,12 @@ export function RoundManager() {
     const currentCzarIndex = state.players.findIndex((p) => p.isCardCzar);
     const nextCzarIndex = (currentCzarIndex + 1) % state.players.length;
     const nextCardCzar = state.players[nextCzarIndex];
+
+    // Update Card Czar
+    dispatch({
+      type: "SET_CARD_CZAR",
+      payload: { playerId: nextCardCzar.id },
+    });
 
     // Draw a new black card
     const [newBlackCard, ...remainingBlackDeck] = state.blackDeck;
@@ -32,11 +39,6 @@ export function RoundManager() {
     dispatch({
       type: "START_ROUND",
       payload: { round: newRound },
-    });
-
-    // Update players to reflect new Card Czar
-    state.players.forEach((player) => {
-      player.isCardCzar = player.id === nextCardCzar.id;
     });
 
     toast({
@@ -134,6 +136,9 @@ export function RoundManager() {
           </Alert>
         )}
       </Card>
+
+      {/* Add Card Czar Interface */}
+      <CardCzarInterface />
     </div>
   );
 }
