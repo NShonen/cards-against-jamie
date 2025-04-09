@@ -3,14 +3,14 @@ export interface Card {
   type: "black" | "white";
   text: string;
   pick?: number; // For black cards
+  category?: string; // Card category for filtering and organization
 }
 
 export interface Player {
   id: string;
   name: string;
-  hand: Card[];
-  isCardCzar: boolean;
   score: number;
+  cards: Card[];
 }
 
 export interface GameRoom {
