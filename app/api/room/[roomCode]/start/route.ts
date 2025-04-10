@@ -8,12 +8,9 @@ const startGameSchema = z.object({
   hostId: z.string().min(1),
 });
 
-export async function POST(
-  request: Request,
-  { params }: { params: { roomCode: string } }
-) {
+export async function POST(request: Request) {
   try {
-    const { roomCode } = params;
+    const roomCode = request.url.split("/").pop();
     if (!roomCode) {
       return NextResponse.json(
         { error: "Room code is required" },

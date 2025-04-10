@@ -1,7 +1,8 @@
 "use client";
 
-import { useGameState } from "@/app/game-room/GameContext";
+import { useGame } from "@/app/context/GameContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Player } from "@/types/game";
 import {
   Table,
   TableBody,
@@ -12,7 +13,7 @@ import {
 } from "@/components/ui/table";
 
 export function Scoreboard() {
-  const { state } = useGameState();
+  const { state } = useGame();
 
   return (
     <Card className="w-full">
@@ -28,7 +29,7 @@ export function Scoreboard() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {state.players.map((player) => (
+            {state.players.map((player: Player) => (
               <TableRow key={player.id}>
                 <TableCell>{player.name}</TableCell>
                 <TableCell>{player.score}</TableCell>

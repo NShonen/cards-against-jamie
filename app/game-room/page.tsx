@@ -13,6 +13,24 @@ import { Scoreboard } from "@/components/game/Scoreboard";
 import { GameResultsModal } from "@/components/game/GameResultsModal";
 import { GameProvider } from "@/app/context/GameContext";
 import { Toaster } from "@/components/ui/toaster";
+import { useGame } from "@/app/context/GameContext";
+
+// Wrapper component for game-specific components that depend on game state
+function GameComponents() {
+  const { state } = useGame();
+
+  // Only show game components if we're in an active game phase
+  if (state.phase === "waiting" || !state.currentRound) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-8">
+      <RoundManager />
+      <Scoreboard />
+    </div>
+  );
+}
 
 export default function GameRoomPage() {
   return (
@@ -85,10 +103,7 @@ export default function GameRoomPage() {
           </div>
 
           {/* Game Components */}
-          <div className="space-y-8">
-            <RoundManager />
-            <Scoreboard />
-          </div>
+          <GameComponents />
         </div>
       </div>
       <GameResultsModal />

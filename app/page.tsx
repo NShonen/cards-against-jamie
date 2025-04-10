@@ -92,7 +92,7 @@ export default function Home() {
         <div className="mt-16 text-center">
           <Separator className="my-8" />
           <p className="text-sm text-muted-foreground">
-            Made with ❤️ by Jamie. Not affiliated with Cards Against Humanity
+            Made with ❤️ by Rahul. Not affiliated with Cards Against Humanity
             LLC.
           </p>
         </div>

@@ -13,10 +13,21 @@ export function RoundManager() {
   const { toast } = useToast();
 
   const startNewRound = useCallback(() => {
+    // Validate required state
+    if (!state.players?.length || !state.blackDeck?.length) {
+      console.error("Cannot start new round: missing players or black deck");
+      return;
+    }
+
     // Select a new Card Czar
     const currentCzarIndex = state.players.findIndex((p) => p.isCardCzar);
     const nextCzarIndex = (currentCzarIndex + 1) % state.players.length;
     const nextCardCzar = state.players[nextCzarIndex];
+
+    if (!nextCardCzar) {
+      console.error("Cannot start new round: invalid card czar");
+      return;
+    }
 
     // Update Card Czar
     dispatch({
@@ -26,6 +37,11 @@ export function RoundManager() {
 
     // Draw a new black card
     const [newBlackCard, ...remainingBlackDeck] = state.blackDeck;
+
+    if (!newBlackCard) {
+      console.error("Cannot start new round: no black cards available");
+      return;
+    }
 
     // Create new round
     const newRound = {
@@ -58,7 +74,7 @@ export function RoundManager() {
   useEffect(() => {
     if (!state.currentRound || state.phase !== "playing") return;
 
-    const currentRound = state.currentRound; // Store reference to avoid null checks
+    const currentRound = state.currentRound;
     const timer = setInterval(() => {
       const timeRemaining = currentRound.timeRemaining - 1;
 
@@ -95,18 +111,28 @@ export function RoundManager() {
     }
   }, [state.phase, startNewRound]);
 
+  // Early return if no current round
   if (!state.currentRound) {
     return null;
   }
 
-  const progressPercentage =
-    (state.currentRound.timeRemaining / state.roundTimeLimit) * 100;
+  // Calculate progress percentage safely
+  const progressPercentage = state.roundTimeLimit
+    ? (state.currentRound.timeRemaining / state.roundTimeLimit) * 100
+    : 0;
+
+  // Find winner name safely
+  const winnerName = state.currentRound.winningSubmission
+    ? state.players?.find(
+        (p) => p.id === state.currentRound?.winningSubmission?.playerId
+      )?.name || "Unknown Player"
+    : null;
 
   return (
     <div className="space-y-4">
       <Card className="p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">Round {state.roundNumber}</h2>
+          <h2 className="text-2xl font-bold">Round {state.roundNumber || 1}</h2>
           <div className="text-sm text-muted-foreground">
             Time Remaining: {state.currentRound.timeRemaining}s
           </div>
@@ -114,24 +140,20 @@ export function RoundManager() {
 
         <Progress value={progressPercentage} className="mb-4" />
 
-        <Alert>
-          <AlertTitle>Black Card</AlertTitle>
-          <AlertDescription className="text-lg">
-            {state.currentRound.blackCard.text}
-          </AlertDescription>
-        </Alert>
+        {state.currentRound.blackCard && (
+          <Alert>
+            <AlertTitle>Black Card</AlertTitle>
+            <AlertDescription className="text-lg">
+              {state.currentRound.blackCard.text}
+            </AlertDescription>
+          </Alert>
+        )}
 
-        {state.phase === "scoring" && state.currentRound.winningSubmission && (
-          <Alert className="mt-4" variant="success">
+        {state.phase === "scoring" && state.currentRound.winningSubmission && winnerName && (
+          <Alert className="mt-4" variant="default">
             <AlertTitle>Winner!</AlertTitle>
             <AlertDescription>
-              {
-                state.players.find(
-                  (p) =>
-                    p.id === state.currentRound?.winningSubmission?.playerId
-                )?.name
-              }{" "}
-              wins this round!
+              {winnerName} wins this round!
             </AlertDescription>
           </Alert>
         )}

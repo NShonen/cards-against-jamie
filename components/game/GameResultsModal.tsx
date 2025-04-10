@@ -30,11 +30,13 @@ export function GameResultsModal() {
     (a, b) => (b.score || 0) - (a.score || 0)
   );
 
-  const winner = state.winner || sortedPlayers[0];
-  const winMessage =
-    state.winCondition.type === "score"
+  const winner =
+    state.winner || (sortedPlayers.length > 0 ? sortedPlayers[0] : null);
+  const winMessage = winner
+    ? state.winCondition.type === "score"
       ? `${winner.name} wins by reaching ${state.winCondition.target} points!`
-      : `${winner.name} wins with the highest score after ${state.winCondition.target} rounds!`;
+      : `${winner.name} wins with the highest score after ${state.winCondition.target} rounds!`
+    : "No winner determined";
 
   const handleNewGame = () => {
     setIsOpen(false);
@@ -47,7 +49,7 @@ export function GameResultsModal() {
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Game Over!</DialogTitle>
-          <DialogDescription>{winner && winMessage}</DialogDescription>
+          <DialogDescription>{winMessage}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <Card>
@@ -61,7 +63,7 @@ export function GameResultsModal() {
                   >
                     <span>
                       {index + 1}. {player.name}
-                      {player.id === winner.id && " 👑"}
+                      {player.id === winner?.id && " 👑"}
                     </span>
                     <span className="font-semibold">{player.score} points</span>
                   </div>
