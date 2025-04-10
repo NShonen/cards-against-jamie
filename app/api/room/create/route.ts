@@ -3,6 +3,8 @@ import { roomStore, Room } from "../store";
 import { nanoid } from "nanoid";
 import { Card, Player } from "@/types/game";
 import { z } from "zod";
+import { AppError, handleValidationError } from "@/lib/error-utils";
+import { handleRateLimit } from "@/lib/rate-limit";
 
 // Sample data for testing
 const sampleBlackCards: Card[] = [
@@ -47,6 +49,12 @@ const createRoomSchema = z.object({
 const generateRoomCode = () => nanoid(6).toUpperCase();
 
 export async function POST(request: Request) {
+  // Check rate limit first
+  const rateLimitResponse = handleRateLimit(request);
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   try {
     const body = await request.json();
 
@@ -74,10 +82,7 @@ export async function POST(request: Request) {
         (room: Room) => room.roomName.toLowerCase() === roomName.toLowerCase()
       )
     ) {
-      return NextResponse.json(
-        { error: "Room name already exists" },
-        { status: 409 }
-      );
+      throw new AppError("Room name already exists", "ROOM_NAME_TAKEN");
     }
 
     // Generate unique room code
@@ -91,9 +96,9 @@ export async function POST(request: Request) {
     }
 
     if (attempts === maxAttempts) {
-      return NextResponse.json(
-        { error: "Failed to generate unique room code. Please try again." },
-        { status: 500 }
+      throw new AppError(
+        "Failed to generate unique room code. Please try again.",
+        "ROOM_CODE_GENERATION_FAILED"
       );
     }
 
@@ -154,6 +159,18 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Error creating room:", error);
+
+    if (error instanceof AppError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: error.code,
+          details: error.details,
+        },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
       {
         error: "Failed to create room",

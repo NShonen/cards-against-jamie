@@ -31,6 +31,10 @@ export const roomStore = {
     return global.rooms!.get(roomCode);
   },
 
+  getAllRooms(): Room[] {
+    return Array.from(global.rooms!.values());
+  },
+
   setRoom(roomCode: string, room: Room): void {
     global.rooms!.set(roomCode, room);
     console.log("Current rooms:", Array.from(global.rooms!.entries()));

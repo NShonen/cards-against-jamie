@@ -2,9 +2,18 @@
 export interface Player {
   id: string;
   name: string;
-  isCardCzar: boolean;
   score: number;
-  selectedCards: string[];
+  isHost: boolean;
+  isCardCzar: boolean;
+  hand: Card[];
+  selectedCards?: string[]; // Keep this for socket-specific functionality
+}
+
+export interface Card {
+  id: string;
+  text: string;
+  type: "black" | "white";
+  pick?: number;
 }
 
 // Room Types

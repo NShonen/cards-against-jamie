@@ -1,15 +1,28 @@
 "use client";
 import React, { useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 const RoomCreation = () => {
   const router = useRouter();
   const [roomName, setRoomName] = useState("");
   const [password, setPassword] = useState("");
+  const [winCondition, setWinCondition] = useState<"score" | "rounds">("score");
+  const [target, setTarget] = useState("5");
+  const [isPasswordProtected, setIsPasswordProtected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -24,7 +37,14 @@ const RoomCreation = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ roomName, password }),
+        body: JSON.stringify({
+          roomName,
+          password: isPasswordProtected ? password : undefined,
+          winCondition: {
+            type: winCondition,
+            target: parseInt(target),
+          },
+        }),
       });
 
       const data = await response.json();
@@ -43,34 +63,95 @@ const RoomCreation = () => {
   };
 
   return (
-    <Card className="w-[400px]">
-      <CardHeader>
-        <CardTitle>Create a New Room</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleCreateRoom} className="space-y-4">
+    <Card className="w-full">
+      <CardContent className="pt-6">
+        <form onSubmit={handleCreateRoom} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="roomName">Room Name</Label>
             <Input
               id="roomName"
-              type="text"
+              placeholder="Enter a name for your room"
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
               required
               disabled={isLoading}
+              className="w-full"
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password (Optional)</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-            />
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password-toggle" className="cursor-pointer">
+                Password Protection
+              </Label>
+              <Switch
+                id="password-toggle"
+                checked={isPasswordProtected}
+                onCheckedChange={setIsPasswordProtected}
+                disabled={isLoading}
+              />
+            </div>
+            {isPasswordProtected && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Room Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter a password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="w-full"
+                />
+              </div>
+            )}
           </div>
-          {error && <div className="text-sm text-red-500">{error}</div>}
+
+          <div className="space-y-4">
+            <Label>Win Condition</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <Select
+                value={winCondition}
+                onValueChange={(value: "score" | "rounds") =>
+                  setWinCondition(value)
+                }
+                disabled={isLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="score">Points</SelectItem>
+                  <SelectItem value="rounds">Rounds</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={target}
+                onValueChange={setTarget}
+                disabled={isLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select target" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[3, 5, 7, 10, 15, 20].map((num) => (
+                    <SelectItem key={num} value={num.toString()}>
+                      {num} {winCondition === "score" ? "points" : "rounds"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Creating..." : "Create Room"}
           </Button>
