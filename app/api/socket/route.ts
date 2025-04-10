@@ -1,81 +1,91 @@
 import { Server } from "socket.io";
-import { NextApiRequest } from "next";
-import { Server as NetServer } from "http";
-import { Socket as NetSocket } from "net";
+import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 
-interface SocketServer extends NetServer {
-  io?: Server;
-}
+// Add immediate logging to verify route is being hit
+console.log("[Socket] Route module loaded");
 
-interface SocketWithIO extends NetSocket {
-  server: SocketServer;
-}
-
-// Store the Socket.IO server instance
 let io: Server | undefined;
 
-// Get the global HTTP server instance
-const getHttpServer = () => {
-  // @ts-ignore - This is a Next.js internal property
+if (!io) {
+  // @ts-ignore - Next.js server instance
   const httpServer = global.__nextHttpServer;
-  if (!httpServer) {
-    throw new Error("HTTP Server not initialized");
-  }
-  return httpServer;
-};
 
-export async function GET(req: Request) {
-  const isProduction = process.env.NODE_ENV === "production";
-
-  if (isProduction) {
-    const origin = req.headers.get("origin");
-    if (!origin?.includes("vercel.app")) {
-      return new Response("Unauthorized", { status: 401 });
-    }
-  }
-
-  try {
-    if (!io) {
-      const httpServer = getHttpServer();
-
-      io = new Server(httpServer, {
-        path: "/api/socket",
-        addTrailingSlash: false,
-        cors: {
-          origin: isProduction
+  if (httpServer) {
+    console.log("[Socket] Creating Socket.IO instance");
+    io = new Server(httpServer, {
+      path: "/api/socket",
+      addTrailingSlash: false,
+      cors: {
+        origin:
+          process.env.NODE_ENV === "production"
             ? ["https://*.vercel.app"]
             : ["http://localhost:3000"],
-          methods: ["GET", "POST"],
-          credentials: true,
+        methods: ["GET", "POST"],
+        credentials: true,
+      },
+    });
+
+    io.on("connection", (socket) => {
+      console.log("[Socket] Client connected:", {
+        id: socket.id,
+        handshake: {
+          headers: socket.handshake.headers,
+          query: socket.handshake.query,
+          auth: socket.handshake.auth,
         },
       });
 
-      // Set up connection handling
-      io.on("connection", (socket) => {
-        console.log("Client connected:", socket.id);
-
-        // Example of maintaining state (possible in traditional runtime)
-        const userSessions = new Map();
-
-        socket.on("login", (userData) => {
-          userSessions.set(socket.id, {
-            ...userData,
-            lastActive: Date.now(),
-          });
-        });
-
-        socket.on("disconnect", () => {
-          userSessions.delete(socket.id);
-          console.log("Client disconnected:", socket.id);
-        });
+      socket.on("room:create", (playerName, callback) => {
+        console.log("[Socket] Room create request:", { playerName });
+        const roomCode = Math.random()
+          .toString(36)
+          .substring(2, 8)
+          .toUpperCase();
+        socket.join(roomCode);
+        callback(roomCode);
+        console.log("[Socket] Room created:", { roomCode, playerName });
       });
-    }
 
-    return new Response("WebSocket server is running", { status: 200 });
+      socket.on("room:join", (roomId, playerName) => {
+        console.log("[Socket] Room join request:", { roomId, playerName });
+        socket.join(roomId);
+        io?.to(roomId).emit("room:joined", {
+          id: roomId,
+          players: [], // This should be populated from your room store
+          currentRound: 0,
+          gameState: "waiting",
+        });
+        console.log("[Socket] Player joined room:", { roomId, playerName });
+      });
+
+      socket.on("disconnect", () => {
+        console.log("[Socket] Client disconnected:", socket.id);
+      });
+    });
+  } else {
+    console.error("[Socket] HTTP Server not available");
+  }
+}
+
+export async function GET(req: Request) {
+  console.log("[Socket] GET request received");
+
+  try {
+    const headersList = await headers();
+    const host = headersList.get("host") || "localhost:3000";
+    const protocol = process.env.NODE_ENV === "production" ? "wss" : "ws";
+    const wsUrl = `${protocol}://${host}`;
+
+    console.log("[Socket] Returning WebSocket URL:", wsUrl);
+
+    return NextResponse.json({ url: wsUrl });
   } catch (error) {
-    console.error("Socket server error:", error);
-    return new Response("Internal Server Error", { status: 500 });
+    console.error("[Socket] Error in GET handler:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
 

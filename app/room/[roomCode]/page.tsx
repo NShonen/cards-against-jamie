@@ -26,6 +26,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useSocketEvents } from "@/hooks/useSocketEvents";
 
 interface RoomData {
   roomName: string;
@@ -46,6 +47,69 @@ export default function RoomPage() {
   const dispatch = useAppDispatch();
   const rooms = useAppSelector(selectRooms);
   const currentGameRoom = rooms.find((r) => r.id === roomCode);
+  const { onRoomJoined, onRoomUpdated, isConnected } = useSocketEvents();
+
+  // Show loading state while socket connects
+  useEffect(() => {
+    if (!isConnected) {
+      setError("Connecting to game server...");
+    } else {
+      setError("");
+    }
+  }, [isConnected]);
+
+  useEffect(() => {
+    // Only set up socket events if connected
+    if (!isConnected) return;
+
+    // Subscribe to room events
+    onRoomJoined((updatedRoom) => {
+      dispatch(
+        updateRoom({
+          id: roomCode as string,
+          name: updatedRoom.name || room?.roomName || "",
+          players: updatedRoom.players || [],
+          status: updatedRoom.gameState || "waiting",
+          currentRound: updatedRoom.currentRound || 0,
+          blackCard: updatedRoom.blackCard || null,
+          submittedCards: updatedRoom.submittedCards || [],
+          scores: updatedRoom.players.map((p) => ({
+            playerId: p.id,
+            score: p.score || 0,
+          })),
+          deck: [],
+          state: "in-progress",
+        })
+      );
+    });
+
+    onRoomUpdated((updatedRoom) => {
+      dispatch(
+        updateRoom({
+          id: roomCode as string,
+          name: updatedRoom.name || room?.roomName || "",
+          players: updatedRoom.players || [],
+          status: updatedRoom.gameState || "waiting",
+          currentRound: updatedRoom.currentRound || 0,
+          blackCard: updatedRoom.blackCard || null,
+          submittedCards: updatedRoom.submittedCards || [],
+          scores: updatedRoom.players.map((p) => ({
+            playerId: p.id,
+            score: p.score || 0,
+          })),
+          deck: [],
+          state: "in-progress",
+        })
+      );
+    });
+  }, [
+    dispatch,
+    roomCode,
+    room?.roomName,
+    onRoomJoined,
+    onRoomUpdated,
+    isConnected,
+  ]);
 
   useEffect(() => {
     const fetchRoom = async () => {
@@ -71,7 +135,7 @@ export default function RoomPage() {
               blackCard: data.blackCard || null,
               submittedCards: data.submittedCards || [],
               scores: data.scores || [],
-              deck: [], // This should be initialized properly
+              deck: [],
               state: "in-progress",
             })
           );
@@ -81,18 +145,24 @@ export default function RoomPage() {
       }
     };
 
-    fetchRoom();
-  }, [roomCode, dispatch, currentGameRoom]);
+    // Only fetch room data if socket is connected
+    if (isConnected) {
+      fetchRoom();
+    }
+  }, [roomCode, dispatch, currentGameRoom, isConnected]);
 
   useEffect(() => {
-    // Initialize current player - in a real app, this would come from auth
     if (currentGameRoom) {
-      const player = currentGameRoom.players[0]; // For demo, use first player
-      if (player) {
-        setCurrentPlayer(player);
+      // Find the current player from local storage or session
+      const playerId = localStorage.getItem(`room_${roomCode}_player_id`);
+      if (playerId) {
+        const player = currentGameRoom.players.find((p) => p.id === playerId);
+        if (player) {
+          setCurrentPlayer(player);
+        }
       }
     }
-  }, [currentGameRoom]);
+  }, [currentGameRoom, roomCode]);
 
   const handleCardSelect = (selectedCards: Card[]) => {
     if (!currentGameRoom || !currentPlayer) return;

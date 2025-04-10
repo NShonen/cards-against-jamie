@@ -6,27 +6,6 @@ import { z } from "zod";
 import { AppError, handleValidationError } from "@/lib/error-utils";
 import { handleRateLimit } from "@/lib/rate-limit";
 
-// Sample data for testing
-const sampleBlackCards: Card[] = [
-  { id: "b1", type: "black", text: "Why can't I sleep at night?", pick: 1 },
-  {
-    id: "b2",
-    type: "black",
-    text: "I got 99 problems but _ ain't one.",
-    pick: 1,
-  },
-  { id: "b3", type: "black", text: "What's that smell?", pick: 1 },
-];
-
-const sampleWhiteCards: Card[] = [
-  { id: "w1", type: "white", text: "A windmill full of corpses." },
-  { id: "w2", type: "white", text: "The Kool-Aid Man." },
-  { id: "w3", type: "white", text: "Puppies!" },
-  { id: "w4", type: "white", text: "Being on fire." },
-  { id: "w5", type: "white", text: "A lifetime of sadness." },
-  { id: "w6", type: "white", text: "Dragons." },
-];
-
 // Validation schema
 const createRoomSchema = z.object({
   roomName: z
@@ -44,6 +23,10 @@ const createRoomSchema = z.object({
       target: z.number().int().min(1).max(20),
     })
     .optional(),
+  hostName: z
+    .string()
+    .min(1, "Host name is required")
+    .max(30, "Host name must be at most 30 characters"),
 });
 
 const generateRoomCode = () => nanoid(6).toUpperCase();
@@ -73,7 +56,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const { roomName, password, winCondition } = validationResult.data;
+    const { roomName, password, winCondition, hostName } =
+      validationResult.data;
 
     // Check if room name is already taken
     const existingRooms = roomStore.getAllRooms();
@@ -102,25 +86,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create sample players with hands
-    const samplePlayers: Player[] = [
-      {
-        id: "p1",
-        name: "Player 1",
-        hand: sampleWhiteCards.slice(0, 3),
-        isCardCzar: true,
-        score: 0,
-        isHost: true,
-      },
-      {
-        id: "p2",
-        name: "Player 2",
-        hand: sampleWhiteCards.slice(3, 6),
-        isCardCzar: false,
-        score: 0,
-        isHost: false,
-      },
-    ];
+    // Create initial host player
+    const hostPlayer: Player = {
+      id: nanoid(), // Generate unique ID for the host
+      name: hostName,
+      hand: [], // Empty hand to start - cards will be dealt when game begins
+      isCardCzar: true, // Host starts as card czar
+      score: 0,
+      isHost: true,
+    };
 
     // Validate win condition
     const validatedWinCondition =
@@ -134,27 +108,30 @@ export async function POST(request: Request) {
             target: 5, // Default: first to 5 points wins
           };
 
-    // Create new room with dummy data
+    // Create new room with real player data
     roomStore.setRoom(roomCode, {
       roomName,
       password,
       createdAt: new Date(),
-      players: samplePlayers,
+      players: [hostPlayer], // Initialize with just the host player
       status: "waiting",
       currentRound: 1,
-      blackCard: sampleBlackCards[0],
+      blackCard: null, // No black card until game starts
       submittedCards: [],
-      scores: samplePlayers.map((player) => ({
-        playerId: player.id,
-        score: 0,
-      })),
+      scores: [
+        {
+          playerId: hostPlayer.id,
+          score: 0,
+        },
+      ],
       winCondition: validatedWinCondition,
       winner: null,
     });
 
-    // Return room code without exposing password
+    // Return room code and player info
     return NextResponse.json({
       roomCode,
+      playerId: hostPlayer.id,
       winCondition: validatedWinCondition,
     });
   } catch (error) {

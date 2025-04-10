@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useSocketEvents } from "@/hooks/useSocketEvents";
 
 const RoomJoin = () => {
   const router = useRouter();
@@ -15,6 +16,7 @@ const RoomJoin = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const { joinRoom } = useSocketEvents();
 
   const handleJoinRoom = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,13 +24,13 @@ const RoomJoin = () => {
     setError("");
 
     try {
-      const response = await fetch("/api/room/join", {
+      // First, try to join via API
+      const response = await fetch(`/api/room/${roomCode}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          roomCode,
           playerName,
           password: password || undefined,
         }),
@@ -39,6 +41,12 @@ const RoomJoin = () => {
       if (!response.ok) {
         throw new Error(data.error || "Failed to join room");
       }
+
+      // Store player ID in localStorage
+      localStorage.setItem(`room_${roomCode}_player_id`, data.playerId);
+
+      // Join room via socket
+      joinRoom(roomCode, playerName);
 
       // Navigate to the room page
       router.push(`/room/${roomCode}`);

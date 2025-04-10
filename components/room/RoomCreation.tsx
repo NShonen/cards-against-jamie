@@ -19,6 +19,7 @@ import { AlertCircle } from "lucide-react";
 const RoomCreation = () => {
   const router = useRouter();
   const [roomName, setRoomName] = useState("");
+  const [hostName, setHostName] = useState("");
   const [password, setPassword] = useState("");
   const [winCondition, setWinCondition] = useState<"score" | "rounds">("score");
   const [target, setTarget] = useState("5");
@@ -39,6 +40,7 @@ const RoomCreation = () => {
         },
         body: JSON.stringify({
           roomName,
+          hostName,
           password: isPasswordProtected ? password : undefined,
           winCondition: {
             type: winCondition,
@@ -73,6 +75,19 @@ const RoomCreation = () => {
               placeholder="Enter a name for your room"
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
+              required
+              disabled={isLoading}
+              className="w-full"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="hostName">Your Name</Label>
+            <Input
+              id="hostName"
+              placeholder="Enter your display name"
+              value={hostName}
+              onChange={(e) => setHostName(e.target.value)}
               required
               disabled={isLoading}
               className="w-full"
