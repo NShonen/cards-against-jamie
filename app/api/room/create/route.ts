@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { roomStore } from "../store";
+import { roomStore, Room } from "../store";
 import { nanoid } from "nanoid";
 import { Card, Player } from "@/types/game";
+import { z } from "zod";
 
 // Sample data for testing
 const sampleBlackCards: Card[] = [
@@ -24,20 +25,77 @@ const sampleWhiteCards: Card[] = [
   { id: "w6", type: "white", text: "Dragons." },
 ];
 
+// Validation schema
+const createRoomSchema = z.object({
+  roomName: z
+    .string()
+    .min(3, "Room name must be at least 3 characters long")
+    .max(50, "Room name must be at most 50 characters long")
+    .regex(
+      /^[a-zA-Z0-9\s-]+$/,
+      "Room name can only contain letters, numbers, spaces, and hyphens"
+    ),
+  password: z.string().optional(),
+  winCondition: z
+    .object({
+      type: z.enum(["score", "rounds"]),
+      target: z.number().int().min(1).max(20),
+    })
+    .optional(),
+});
+
 const generateRoomCode = () => nanoid(6).toUpperCase();
 
 export async function POST(request: Request) {
   try {
-    const { roomName, password, winCondition } = await request.json();
+    const body = await request.json();
 
-    if (!roomName) {
+    // Validate request body
+    const validationResult = createRoomSchema.safeParse(body);
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Room name is required" },
+        {
+          error: "Invalid request data",
+          details: validationResult.error.errors.map((err) => ({
+            path: err.path.join("."),
+            message: err.message,
+          })),
+        },
         { status: 400 }
       );
     }
 
-    const roomCode = generateRoomCode();
+    const { roomName, password, winCondition } = validationResult.data;
+
+    // Check if room name is already taken
+    const existingRooms = roomStore.getAllRooms();
+    if (
+      existingRooms.some(
+        (room: Room) => room.roomName.toLowerCase() === roomName.toLowerCase()
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Room name already exists" },
+        { status: 409 }
+      );
+    }
+
+    // Generate unique room code
+    let roomCode = generateRoomCode();
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (roomStore.getRoom(roomCode) && attempts < maxAttempts) {
+      roomCode = generateRoomCode();
+      attempts++;
+    }
+
+    if (attempts === maxAttempts) {
+      return NextResponse.json(
+        { error: "Failed to generate unique room code. Please try again." },
+        { status: 500 }
+      );
+    }
 
     // Create sample players with hands
     const samplePlayers: Player[] = [
@@ -77,15 +135,10 @@ export async function POST(request: Request) {
       password,
       createdAt: new Date(),
       players: samplePlayers,
-      status: "playing",
+      status: "waiting",
       currentRound: 1,
       blackCard: sampleBlackCards[0],
-      submittedCards: [
-        {
-          playerId: "p2",
-          cards: [sampleWhiteCards[3]],
-        },
-      ],
+      submittedCards: [],
       scores: samplePlayers.map((player) => ({
         playerId: player.id,
         score: 0,
@@ -97,12 +150,15 @@ export async function POST(request: Request) {
     // Return room code without exposing password
     return NextResponse.json({
       roomCode,
-      winCondition: validatedWinCondition, // Return the actual win condition being used
+      winCondition: validatedWinCondition,
     });
   } catch (error) {
     console.error("Error creating room:", error);
     return NextResponse.json(
-      { error: "Failed to create room" },
+      {
+        error: "Failed to create room",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }
