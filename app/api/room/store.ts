@@ -3,7 +3,6 @@ import { Card, GameStatus, Player } from "@/types/game";
 export interface Room {
   roomName: string;
   password?: string;
-  createdAt: Date;
   players: Player[];
   status: GameStatus;
   currentRound: number;

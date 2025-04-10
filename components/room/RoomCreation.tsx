@@ -15,9 +15,13 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { useAppDispatch } from "@/store/hooks";
+import { setRoom } from "@/store/slices/roomSlice";
+import { savePlayerInfo } from "@/lib/localStorage";
 
 const RoomCreation = () => {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const [roomName, setRoomName] = useState("");
   const [hostName, setHostName] = useState("");
   const [password, setPassword] = useState("");
@@ -55,7 +59,22 @@ const RoomCreation = () => {
         throw new Error(data.error || "Failed to create room");
       }
 
-      // Navigate to the room page
+      // Save to Redux or context
+      dispatch(
+        setRoom({
+          roomCode: data.roomCode,
+          playerId: data.playerId,
+          winCondition: data.winCondition,
+        })
+      );
+
+      // After room creation success
+      savePlayerInfo({
+        playerId: data.playerId,
+        roomCode: data.roomCode,
+        playerName: hostName,
+      });
+
       router.push(`/room/${data.roomCode}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");

@@ -9,6 +9,8 @@ import {
   Card,
   Round,
 } from "../../types/game";
+import { getPlayerInfo } from "@/lib/localStorage";
+import { supabase } from "@/lib/supabaseClient";
 
 const initialState: GameState = {
   roomId: "",
@@ -143,17 +145,29 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         })),
       };
 
+    case "SET_WINNER":
+      return {
+        ...state,
+        winner: action.payload.winner,
+        phase: "gameEnd",
+      };
+
+    case "SET_ROOM_ID":
+      return {
+        ...state,
+        roomId: action.payload.roomId,
+      };
+
     case "SET_WIN_CONDITION":
       return {
         ...state,
         winCondition: action.payload.winCondition,
       };
 
-    case "SET_WINNER":
+    case "SET_PLAYERS":
       return {
         ...state,
-        winner: action.payload.winner,
-        phase: "gameEnd",
+        players: action.payload.players,
       };
 
     default:
@@ -168,6 +182,48 @@ const GameContext = createContext<{
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(gameReducer, initialState);
+
+  useEffect(() => {
+    const { roomCode } = getPlayerInfo(); // or use state.roomId directly
+
+    if (!roomCode) return;
+
+    const channel = supabase
+      .channel(`players:room:${roomCode}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "players",
+          filter: `room_code=eq.${roomCode}`,
+        },
+        async () => {
+          // Re-fetch full player list on any change
+          const { data, error } = await supabase
+            .from("players")
+            .select("*")
+            .eq("room_code", roomCode);
+
+          if (error) {
+            console.error("Error fetching players:", error);
+            return;
+          }
+
+          dispatch({
+            type: "SET_PLAYERS",
+            payload: {
+              players: data,
+            },
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [state.roomId]);
 
   return (
     <GameContext.Provider value={{ state, dispatch }}>

@@ -68,7 +68,9 @@ export interface GameAction {
     | "UPDATE_TIMER"
     | "SET_CARD_CZAR"
     | "SET_WIN_CONDITION"
-    | "SET_WINNER";
+    | "SET_WINNER"
+    | "SET_PLAYERS"
+    | "SET_ROOM_ID";
   payload: any;
 }
 

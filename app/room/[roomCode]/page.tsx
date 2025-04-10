@@ -1,103 +1,98 @@
 "use client";
 
-import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { GameLayout } from "@/components/layout/GameLayout";
-import CardSelection from "@/components/game/CardSelection";
-import {
-  Card,
-  Player,
-  GameStatus,
-  SubmittedCard,
-  PlayerScore,
-} from "@/types/game";
-import { selectRooms, updateRoom, addRoom } from "@/state/gameReducer";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card as CardUI,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { useSocketEvents } from "@/hooks/useSocketEvents";
-import { useToast } from "@/components/ui/use-toast";
-import { RoomJoin } from "@/components/room/RoomJoin";
-import { RoomLobby } from "@/components/room/RoomLobby";
-import { RoomGame } from "@/components/room/RoomGame";
-import { RoomHeader } from "@/components/room/RoomHeader";
-import { RoomFooter } from "@/components/room/RoomFooter";
-import { selectRoom, setRoom } from "@/store/slices/roomSlice";
-import { selectUser } from "@/store/slices/userSlice";
+import { useRouter, useParams } from "next/navigation";
+import { getPlayerInfo } from "@/lib/localStorage";
+import { supabase } from "@/lib/supabaseClient";
+import { useGame, GameProvider } from "@/app/context/GameContext";
 
-interface RoomData {
-  roomName: string;
-  createdAt: string;
-  players: Player[];
-  status: GameStatus;
-  currentRound: number;
-  blackCard: Card | null;
-  submittedCards: SubmittedCard[];
-  scores: PlayerScore[];
-}
+function RoomContent() {
+  const { state, dispatch } = useGame();
+  const router = useRouter();
+  const { roomCode } = useParams<{ roomCode: string }>();
 
-export default function RoomPage() {
-  const { roomCode } = useParams();
-  const dispatch = useAppDispatch();
-  const room = useAppSelector(selectRoom);
-  const user = useAppSelector(selectUser);
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [room, setRoom] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchRoomData = async () => {
-      try {
-        // TODO: Replace with actual API call to fetch room data
-        const response = await fetch(`/api/rooms/${roomCode}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch room data");
-        }
-        const roomData = await response.json();
-        dispatch(setRoom(roomData));
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to fetch room data",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
+    const { playerId } = getPlayerInfo();
+
+    if (!roomCode || !playerId) {
+      router.push("/game-room");
+      return;
+    }
+
+    const fetchRoom = async () => {
+      const { data, error } = await supabase
+        .from("rooms")
+        .select("*")
+        .eq("code", roomCode)
+        .maybeSingle();
+
+      if (error || !data) {
+        setError("Room not found or error loading.");
+        return;
       }
+
+      setRoom(data);
+
+      dispatch({ type: "SET_ROOM_ID", payload: { roomId: roomCode } });
+      dispatch({
+        type: "SET_WIN_CONDITION",
+        payload: {
+          winCondition: {
+            type: data.target_score ? "score" : "rounds",
+            target: data.target_score || 5,
+          },
+        },
+      });
+
+      const { data: players } = await supabase
+        .from("players")
+        .select("*")
+        .eq("room_code", roomCode);
+
+      if (players) {
+        dispatch({ type: "SET_PLAYERS", payload: { players } });
+      }
+
+      setLoading(false);
     };
 
-    fetchRoomData();
-  }, [roomCode, dispatch, toast]);
+    fetchRoom();
+  }, [roomCode]);
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!room) {
-    return <RoomJoin roomCode={roomCode as string} />;
-  }
+  if (loading) return <div className="p-6">Loading room...</div>;
+  if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <RoomHeader room={room} />
-      <main className="flex-grow container mx-auto px-4 py-8">
-        {room.gameState === "waiting" ? (
-          <RoomLobby room={room} />
-        ) : (
-          <RoomGame room={room} />
-        )}
-      </main>
-      <RoomFooter room={room} />
+    <div className="container max-w-3xl py-10">
+      <h1 className="text-3xl font-bold mb-4">Room: {room.name}</h1>
+      <p className="text-muted-foreground mb-6">Code: {room.code}</p>
+
+      <div className="mb-8">
+        <p>
+          Current Phase: <strong>{state.phase}</strong>
+        </p>
+        <p>Players in Room: {state.players.length}</p>
+        <ul className="list-disc list-inside">
+          {state.players.map((p) => (
+            <li key={p.id}>
+              {p.name} {p.isCardCzar ? "(Czar)" : ""}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
+  );
+}
+
+// Wrap RoomContent in GameProvider
+export default function RoomPageWrapper() {
+  return (
+    <GameProvider>
+      <RoomContent />
+    </GameProvider>
   );
 }
