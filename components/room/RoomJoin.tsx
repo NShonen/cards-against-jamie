@@ -7,115 +7,101 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useSocketEvents } from "@/hooks/useSocketEvents";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useToast } from "@/components/ui/use-toast";
+import { useAppDispatch } from "@/store/hooks";
+import { setRoom } from "@/store/slices/roomSlice";
 
-const RoomJoin = () => {
+const formSchema = z.object({
+  playerName: z.string().min(2, "Name must be at least 2 characters"),
+});
+
+type FormData = z.infer<typeof formSchema>;
+
+interface RoomJoinProps {
+  roomCode: string;
+}
+
+export default function RoomJoin({ roomCode }: RoomJoinProps) {
   const router = useRouter();
-  const [roomCode, setRoomCode] = useState("");
-  const [playerName, setPlayerName] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const { joinRoom } = useSocketEvents();
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const dispatch = useAppDispatch();
 
-  const handleJoinRoom = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      playerName: "",
+    },
+  });
 
+  const onSubmit = async (data: FormData) => {
+    setLoading(true);
     try {
-      // First, try to join via API
-      const response = await fetch(`/api/room/${roomCode}`, {
+      // Join room via API
+      const response = await fetch(`/api/rooms/${roomCode}/join`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          playerName,
-          password: password || undefined,
+          playerName: data.playerName,
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || "Failed to join room");
+        throw new Error("Failed to join room");
       }
 
-      // Store player ID in localStorage
-      localStorage.setItem(`room_${roomCode}_player_id`, data.playerId);
-
-      // Join room via socket
-      joinRoom(roomCode, playerName);
+      const roomData = await response.json();
+      dispatch(setRoom(roomData));
 
       // Navigate to the room page
       router.push(`/room/${roomCode}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to join room",
+        variant: "destructive",
+      });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
     <Card className="w-full">
       <CardContent className="pt-6">
-        <form onSubmit={handleJoinRoom} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="roomCode">Room Code</Label>
-            <Input
-              id="roomCode"
-              placeholder="Enter 6-character room code"
-              value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-              required
-              disabled={isLoading}
-              className="w-full uppercase"
-              maxLength={6}
-            />
-          </div>
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Join Room</h1>
+          <p className="text-muted-foreground mt-2">Room Code: {roomCode}</p>
+        </div>
 
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="playerName">Player Name</Label>
             <Input
               id="playerName"
-              placeholder="Enter your display name"
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              required
-              disabled={isLoading}
+              placeholder="Enter your name"
+              {...form.register("playerName")}
+              disabled={loading}
               className="w-full"
               maxLength={20}
             />
+            {form.formState.errors.playerName && (
+              <p className="text-sm text-destructive">
+                {form.formState.errors.playerName.message}
+              </p>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Room Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Enter room password (if required)"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-              className="w-full"
-            />
-          </div>
-
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Joining..." : "Join Room"}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Joining..." : "Join Room"}
           </Button>
         </form>
       </CardContent>
     </Card>
   );
-};
-
-export default RoomJoin;
+}
