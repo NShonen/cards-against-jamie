@@ -1,0 +1,31 @@
+**DATABASE TABLES SCHEMA**
+| table_name        | column_name   | data_type                | is_nullable |
+| ----------------- | ------------- | ------------------------ | ----------- |
+| cards_black       | id            | uuid                     | NO          |
+| cards_black       | text          | text                     | NO          |
+| cards_black       | pick          | integer                  | YES         |
+| cards_white       | id            | uuid                     | NO          |
+| cards_white       | text          | text                     | NO          |
+| game_state        | room_code     | text                     | NO          |
+| game_state        | black_card_id | uuid                     | YES         |
+| game_state        | status        | text                     | YES         |
+| player_hands      | id            | uuid                     | NO          |
+| player_hands      | player_id     | uuid                     | YES         |
+| player_hands      | card_id       | uuid                     | YES         |
+| players           | id            | uuid                     | NO          |
+| players           | room_code     | text                     | NO          |
+| players           | name          | text                     | NO          |
+| players           | is_host       | boolean                  | YES         |
+| players           | is_card_czar  | boolean                  | YES         |
+| players           | score         | integer                  | YES         |
+| rooms             | code          | text                     | NO          |
+| rooms             | name          | text                     | NO          |
+| rooms             | status        | text                     | YES         |
+| rooms             | round_number  | integer                  | YES         |
+| rooms             | target_score  | integer                  | YES         |
+| rooms             | password      | text                     | YES         |
+| round_submissions | id            | uuid                     | NO          |
+| round_submissions | player_id     | uuid                     | YES         |
+| round_submissions | card_ids      | ARRAY                    | NO          |
+| round_submissions | round_number  | integer                  | NO          |
+| round_submissions | created_at    | timestamp with time zone | YES         |

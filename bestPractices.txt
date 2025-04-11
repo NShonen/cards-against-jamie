@@ -1,0 +1,4 @@
+Command Running Practices:
+MUST Ensure that all commands are compatible with PowerShell syntax before running
+MUST use use semicolons ; instead for command separators in Powershell
+NEVER use Unix-style command separators like && or | in PowerShell
